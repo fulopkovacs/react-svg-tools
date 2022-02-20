@@ -3,7 +3,11 @@ interface ElementStyleProperties {
 }
 
 interface ElementAttributes {
-  [key: string]: string | null | ElementStyleProperties;
+  [key: string]:
+    | string
+    | null
+    | ElementStyleProperties
+    | Array<PathObjectC | PathObjectM>; // TODO: This array is only suitable for the `d` attribute of the `path` element. Fix it later!
 }
 
 interface ElementObjectBase {
@@ -12,12 +16,13 @@ interface ElementObjectBase {
   children?: ElementObjectBase[];
 }
 
-interface PathElementObject extends ElementObjectBase {
+interface PathObjectBase {
+  id: number;
   x: number;
   y: number;
 }
 
-interface PathElementObjectC extends PathElementObject {
+interface PathObjectC extends PathObjectBase {
   pathType: `C`;
   x1: number;
   y1: number;
@@ -25,6 +30,6 @@ interface PathElementObjectC extends PathElementObject {
   y2: number;
 }
 
-interface PathElementObjectM extends ElementObjectBase {
+interface PathObjectM extends PathObjectBase {
   pathType: `M`;
 }

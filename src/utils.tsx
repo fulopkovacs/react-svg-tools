@@ -1,14 +1,50 @@
 import { InvalidXMLDocumentFormat } from "./errors";
 
+// TODO:
+// This only works for the selected path types and absolute coordinates.
+// Make this work with everything else!
+function parseDAttribute(d: string) {
+  const dArray = d
+    .replaceAll(",", " ")
+    .replaceAll(/[A-z]/g, " $& ")
+    .trim()
+    .split(/\s+/);
+  let nodesArray = [];
+  let nodeId = 0;
+  for (let i = 0; i < dArray.length; i++) {
+    const e = dArray[i];
+    if (["C", "M"].includes(e)) {
+      let nodeBase: PathObjectBase = {
+        x: Number(dArray[++i]),
+        y: Number(dArray[++i]),
+        id: nodeId++,
+      };
+      if (e === "C") {
+        const nodeCData: PathObjectC = {
+          ...nodeBase,
+          pathType: e,
+          x1: Number(dArray[++i]),
+          y1: Number(dArray[++i]),
+          x2: Number(dArray[++i]),
+          y2: Number(dArray[++i]),
+        };
+        nodesArray.push(nodeCData);
+      } else if (e === "M") {
+        const nodeMData: PathObjectM = { ...nodeBase, pathType: e };
+        nodesArray.push(nodeMData);
+      }
+    }
+  }
+  return nodesArray;
+}
+
 function parseNode(element: Element): ElementObjectBase {
+  /* TODO: Flatten this array to obtain ids that can be used to change the data object that defines  the state of the svg react component
+   */
   const base = { name: element.nodeName };
-  // const attributes = Array.from(node.attributes).map(
-  //   ({ nodeName, nodeValue }) =>
-  //     nodeName !== "d" && { name: nodeName, value: nodeValue }
-  // );
   const attributes: ElementAttributes = {};
   Array.from(element.attributes).forEach(({ nodeName, nodeValue }) => {
-    if (nodeName !== "style") {
+    if (!["style", "d"].includes(nodeName)) {
       attributes[nodeName] = nodeValue;
     } else if (nodeName === "style" && nodeValue) {
       const styleObject: ElementStyleProperties = {};
@@ -18,6 +54,9 @@ function parseNode(element: Element): ElementObjectBase {
         styleObject[key] = value;
       }
       attributes.style = styleObject;
+    } else if (nodeName === "d" && nodeValue) {
+      const d = parseDAttribute(nodeValue);
+      attributes.d = d;
     }
   });
 
@@ -62,4 +101,4 @@ function createXMLElement(xmlElementString: string) {
   return svgImageElement;
 }
 
-export { parseXML, createXMLElement };
+export { parseXML, createXMLElement, parseDAttribute };
