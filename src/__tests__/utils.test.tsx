@@ -1,4 +1,10 @@
-import { parseDAttribute, parseXML } from "../utils";
+import {
+  convertToCamelCase,
+  generateDString,
+  generateStyleObject,
+  parseDAttribute,
+  parseXML,
+} from "../utils";
 
 test("Parse a  valid d attribute of a path properly", () => {
   const d =
@@ -6,60 +12,130 @@ test("Parse a  valid d attribute of a path properly", () => {
 
   const value = parseDAttribute(d);
   const expectation = [
-    { id: 0, pathType: "M", x: 153.215, y: 92.4 },
+    {
+      id: 0,
+      pathType: "M",
+      x: 153.215,
+      y: 92.4,
+    },
     {
       id: 1,
       pathType: "C",
-      x: 133.16,
-      x1: 117.289,
-      x2: 128.129,
-      y: 105.474,
-      y1: 239.28,
-      y2: 259.147,
+      x: 128.129,
+      x1: 133.16,
+      x2: 117.289,
+      y: 259.147,
+      y1: 105.474,
+      y2: 239.28,
     },
     {
       id: 2,
       pathType: "C",
-      x: 135.902,
-      x1: 214.839,
-      x2: 257.831,
-      y: 273.394,
-      y1: 279.898,
-      y2: 282.697,
+      x: 257.831,
+      x1: 135.902,
+      x2: 214.839,
+      y: 282.697,
+      y1: 273.394,
+      y2: 279.898,
     },
     {
       id: 3,
       pathType: "C",
-      x: 300.55,
-      x1: 370.809,
-      x2: 386.081,
-      y: 285.478,
-      y1: 290.666,
-      y2: 275.942,
+      x: 386.081,
+      x1: 300.55,
+      x2: 370.809,
+      y: 275.942,
+      y1: 285.478,
+      y2: 290.666,
     },
     {
       id: 4,
       pathType: "C",
-      x: 398.266,
-      x1: 401.935,
-      x2: 391.446,
-      y: 264.194,
-      y1: 170.826,
-      y2: 141.985,
+      x: 391.446,
+      x1: 398.266,
+      x2: 401.935,
+      y: 141.985,
+      y1: 264.194,
+      y2: 170.826,
     },
     {
       id: 5,
       pathType: "C",
-      x: 384.014,
-      x1: 172.456,
-      x2: 153.215,
-      y: 121.553,
-      y1: 79.857,
-      y2: 92.4,
+      x: 153.215,
+      x1: 384.014,
+      x2: 172.456,
+      y: 92.4,
+      y1: 121.553,
+      y2: 79.857,
     },
   ];
 
   expect(value).toStrictEqual(expectation);
+});
+
+test("Convert a dObject to string", () => {
+  const source: Array<PathObjectM | PathObjectC> = [
+    {
+      id: 0,
+      pathType: "M",
+      x: 153.215,
+      y: 92.4,
+    },
+    {
+      id: 1,
+      pathType: "C",
+      x: 128.129,
+      x1: 133.16,
+      x2: 117.289,
+      y: 259.147,
+      y1: 105.474,
+      y2: 239.28,
+    },
+    {
+      id: 2,
+      pathType: "C",
+      x: 257.831,
+      x1: 135.902,
+      x2: 214.839,
+      y: 282.697,
+      y1: 273.394,
+      y2: 279.898,
+    },
+    {
+      id: 3,
+      pathType: "C",
+      x: 386.081,
+      x1: 300.55,
+      x2: 370.809,
+      y: 275.942,
+      y1: 285.478,
+      y2: 290.666,
+    },
+    {
+      id: 4,
+      pathType: "C",
+      x: 391.446,
+      x1: 398.266,
+      x2: 401.935,
+      y: 141.985,
+      y1: 264.194,
+      y2: 170.826,
+    },
+    {
+      id: 5,
+      pathType: "C",
+      x: 153.215,
+      x1: 384.014,
+      x2: 172.456,
+      y: 92.4,
+      y1: 121.553,
+      y2: 79.857,
+    },
+  ];
+  const expectation =
+    "M153.215 92.4 C133.16 105.474 117.289 239.28 128.129 259.147 C135.902 273.394 214.839 279.898 257.831 282.697 C300.55 285.478 370.809 290.666 386.081 275.942 C398.266 264.194 401.935 170.826 391.446 141.985 C384.014 121.553 172.456 79.857 153.215 92.4 ";
+
+  expect(generateDString(source)).toStrictEqual(expectation);
 });
 
 test("Parse a valid string representation of an svg document", () => {
@@ -83,11 +159,11 @@ test("Parse a valid string representation of an svg document", () => {
       "xml:space": "preserve",
       "xmlns:serif": "http://www.serif.com/",
       style: {
-        "fill-rule": "evenodd",
-        "clip-rule": "evenodd",
-        "stroke-linecap": "round",
-        "stroke-linejoin": "round",
-        "stroke-miterlimit": "1.5",
+        clipRule: "evenodd",
+        fillRule: "evenodd",
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+        strokeMiterlimit: "1.5",
       },
     },
     children: [
@@ -111,58 +187,58 @@ test("Parse a valid string representation of an svg document", () => {
                     {
                       id: 1,
                       pathType: "C",
-                      x: 133.16,
-                      x1: 117.289,
-                      x2: 128.129,
-                      y: 105.474,
-                      y1: 239.28,
-                      y2: 259.147,
+                      x: 128.129,
+                      x1: 133.16,
+                      x2: 117.289,
+                      y: 259.147,
+                      y1: 105.474,
+                      y2: 239.28,
                     },
                     {
                       id: 2,
                       pathType: "C",
-                      x: 135.902,
-                      x1: 214.839,
-                      x2: 257.831,
-                      y: 273.394,
-                      y1: 279.898,
-                      y2: 282.697,
+                      x: 257.831,
+                      x1: 135.902,
+                      x2: 214.839,
+                      y: 282.697,
+                      y1: 273.394,
+                      y2: 279.898,
                     },
                     {
                       id: 3,
                       pathType: "C",
-                      x: 300.55,
-                      x1: 370.809,
-                      x2: 386.081,
-                      y: 285.478,
-                      y1: 290.666,
-                      y2: 275.942,
+                      x: 386.081,
+                      x1: 300.55,
+                      x2: 370.809,
+                      y: 275.942,
+                      y1: 285.478,
+                      y2: 290.666,
                     },
                     {
                       id: 4,
                       pathType: "C",
-                      x: 398.266,
-                      x1: 401.935,
-                      x2: 391.446,
-                      y: 264.194,
-                      y1: 170.826,
-                      y2: 141.985,
+                      x: 391.446,
+                      x1: 398.266,
+                      x2: 401.935,
+                      y: 141.985,
+                      y1: 264.194,
+                      y2: 170.826,
                     },
                     {
                       id: 5,
                       pathType: "C",
-                      x: 384.014,
-                      x1: 172.456,
-                      x2: 153.215,
-                      y: 121.553,
-                      y1: 79.857,
-                      y2: 92.4,
+                      x: 153.215,
+                      x1: 384.014,
+                      x2: 172.456,
+                      y: 92.4,
+                      y1: 121.553,
+                      y2: 79.857,
                     },
                   ],
                   style: {
                     fill: "none",
                     stroke: "#000",
-                    "stroke-width": "14px",
+                    strokeWidth: "14px",
                   },
                 },
               },
@@ -173,4 +249,26 @@ test("Parse a valid string representation of an svg document", () => {
     ],
   };
   expect(value).toStrictEqual(expectation);
+});
+
+test("Convert strings to camelCase", () => {
+  const rawString = ["stroke-width", "fill-rule", "width"];
+  const expectedString = ["strokeWidth", "fillRule", "width"];
+  expect(rawString.map((s) => convertToCamelCase(s))).toStrictEqual(
+    expectedString
+  );
+});
+
+test("Generate style object from string", () => {
+  const raw =
+    "fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;";
+
+  const styleObj = {
+    clipRule: "evenodd",
+    fillRule: "evenodd",
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    strokeMiterlimit: "1.5",
+  };
+  expect(generateStyleObject(raw)).toStrictEqual(styleObj);
 });

@@ -7,7 +7,7 @@ interface ElementAttributes {
     | string
     | null
     | ElementStyleProperties
-    | Array<PathObjectC | PathObjectM>; // TODO: This array is only suitable for the `d` attribute of the `path` element. Fix it later!
+    | Array<PathObjectC | PathObjectM | PathObjectL>; // TODO: This array is only suitable for the `d` attribute of the `path` element. Fix it later!
 }
 
 interface ElementObjectBase {
@@ -32,4 +32,8 @@ interface PathObjectC extends PathObjectBase {
 
 interface PathObjectM extends PathObjectBase {
   pathType: `M`;
+}
+
+interface PathObjectL extends PathObjectBase {
+  pathType: `L`;
 }

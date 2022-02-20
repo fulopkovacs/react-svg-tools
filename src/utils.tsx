@@ -1,4 +1,7 @@
-import { InvalidXMLDocumentFormat } from "./errors";
+import {
+  InvalidXMLDocumentFormatError,
+  OnlyAbsoluteCoordinatesError,
+} from "./errors";
 
 // TODO:
 // This only works for the selected path types and absolute coordinates.
@@ -13,29 +16,78 @@ function parseDAttribute(d: string) {
   let nodeId = 0;
   for (let i = 0; i < dArray.length; i++) {
     const e = dArray[i];
-    if (["C", "M"].includes(e)) {
-      let nodeBase: PathObjectBase = {
-        x: Number(dArray[++i]),
-        y: Number(dArray[++i]),
-        id: nodeId++,
-      };
+    if (["C", "M", "L"].includes(e)) {
       if (e === "C") {
-        const nodeCData: PathObjectC = {
-          ...nodeBase,
-          pathType: e,
+        const node: PathObjectC = {
           x1: Number(dArray[++i]),
           y1: Number(dArray[++i]),
           x2: Number(dArray[++i]),
           y2: Number(dArray[++i]),
+          x: Number(dArray[++i]),
+          y: Number(dArray[++i]),
+          id: nodeId++,
+          pathType: e,
         };
-        nodesArray.push(nodeCData);
-      } else if (e === "M") {
-        const nodeMData: PathObjectM = { ...nodeBase, pathType: e };
-        nodesArray.push(nodeMData);
+        nodesArray.push(node);
+      } else if (e === "M" || e == "L") {
+        const node: PathObjectM | PathObjectL = {
+          x: Number(dArray[++i]),
+          y: Number(dArray[++i]),
+          id: nodeId++,
+          pathType: e,
+        };
+        nodesArray.push(node);
       }
+    } else if (e.match(/[a-z]/)) {
+      throw new OnlyAbsoluteCoordinatesError(
+        e + "  Relative coordinates are not supported yet!"
+      );
     }
   }
   return nodesArray;
+}
+
+function generateDString(
+  nodeDataArray: Array<PathObjectM | PathObjectC>
+): string {
+  let dString = "";
+  for (let nodeData of nodeDataArray) {
+    dString += nodeData.pathType;
+
+    if ("x1" in nodeData)
+      dString += nodeData.x1.toString() + " " + nodeData.y1.toString() + " ";
+    if ("x2" in nodeData)
+      dString += nodeData.x2.toString() + " " + nodeData.y2.toString() + " ";
+    if ("x" in nodeData)
+      dString += nodeData.x.toString() + " " + nodeData.y.toString() + " ";
+  }
+  return dString;
+}
+
+function convertToCamelCase(name: string) {
+  const hyphenName = name.split("-");
+  let camelCaseString = hyphenName.shift();
+  // TODO: avoid checking the value of `camelCaseString` for `undefined`
+  // if it's not necessary
+  if (hyphenName.length > 0 && camelCaseString) {
+    for (let part of hyphenName) {
+      camelCaseString += part.charAt(0).toUpperCase() + part.slice(1);
+    }
+    return camelCaseString;
+  }
+
+  return name;
+}
+
+function generateStyleObject(nodeValue: string) {
+  const styleObject: ElementStyleProperties = {};
+  for (let styleProp of nodeValue.split(";")) {
+    const [key, value] = styleProp.split(":");
+    if (key === "") continue;
+    const keyInCamelCase = convertToCamelCase(key);
+    styleObject[keyInCamelCase] = value;
+  }
+  return styleObject;
 }
 
 function parseNode(element: Element): ElementObjectBase {
@@ -47,15 +99,11 @@ function parseNode(element: Element): ElementObjectBase {
     if (!["style", "d"].includes(nodeName)) {
       attributes[nodeName] = nodeValue;
     } else if (nodeName === "style" && nodeValue) {
-      const styleObject: ElementStyleProperties = {};
-      for (let styleProp of nodeValue.split(";")) {
-        const [key, value] = styleProp.split(":");
-        if (key === "") continue;
-        styleObject[key] = value;
-      }
+      const styleObject = generateStyleObject(nodeValue);
       attributes.style = styleObject;
     } else if (nodeName === "d" && nodeValue) {
       const d = parseDAttribute(nodeValue);
+      // const d = nodeValue; // TODO; Use the `parseDAttribute` function here later!!!
       attributes.d = d;
     }
   });
@@ -76,7 +124,6 @@ function parseXML(xmlElement: XMLDocument) {
   // first child element of the xml document is an svg element.
   const svgObject = xmlElement.children[0] as SVGSVGElement;
   const svgDataObject = parseNode(svgObject);
-  console.log(svgDataObject);
   return svgDataObject;
 }
 
@@ -93,7 +140,7 @@ function createXMLElement(xmlElementString: string) {
   // INFO: This is how the parsing errors are supposed to be handled
   // see: https://developer.mozilla.org/en-US/docs/Web/API/DOMParser/parseFromString#error_handling
   if (errorNode) {
-    throw new InvalidXMLDocumentFormat(
+    throw new InvalidXMLDocumentFormatError(
       "The svg file is not formatted properly!"
     );
   }
@@ -101,4 +148,11 @@ function createXMLElement(xmlElementString: string) {
   return svgImageElement;
 }
 
-export { parseXML, createXMLElement, parseDAttribute };
+export {
+  parseXML,
+  createXMLElement,
+  convertToCamelCase,
+  parseDAttribute,
+  generateDString,
+  generateStyleObject,
+};

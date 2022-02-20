@@ -1,5 +1,6 @@
 import { createXMLElement, parseXML } from "./utils";
-import { InvalidXMLDocumentFormat } from "./errors";
+import { InvalidXMLDocumentFormatError } from "./errors";
+import SvgImage from "./SvgImage";
 
 export function RenderSvgImage(props: { content: string | null }) {
   if (props.content === null) return <div>empty</div>;
@@ -9,10 +10,10 @@ export function RenderSvgImage(props: { content: string | null }) {
     const xmlElement = createXMLElement(props.content);
     doc = parseXML(xmlElement);
   } catch (error) {
-    if (error instanceof InvalidXMLDocumentFormat)
+    if (error instanceof InvalidXMLDocumentFormatError)
       return <div>{error.message}</div>;
   }
   return <div>{String(doc)}</div>;
 }
 
-export { createXMLElement, parseXML };
+export { createXMLElement, parseXML, SvgImage };
