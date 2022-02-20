@@ -14,6 +14,7 @@ function parseNode(element: Element): ElementObjectBase {
       const styleObject: ElementStyleProperties = {};
       for (let styleProp of nodeValue.split(";")) {
         const [key, value] = styleProp.split(":");
+        if (key === "") continue;
         styleObject[key] = value;
       }
       attributes.style = styleObject;
@@ -37,7 +38,7 @@ function parseXML(xmlElement: XMLDocument) {
   const svgObject = xmlElement.children[0] as SVGSVGElement;
   const svgDataObject = parseNode(svgObject);
   console.log(svgDataObject);
-  return { children: null };
+  return svgDataObject;
 }
 
 function createXMLElement(xmlElementString: string) {
