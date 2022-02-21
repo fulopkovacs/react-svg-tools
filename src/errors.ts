@@ -12,4 +12,15 @@ class OnlyAbsoluteCoordinatesError extends Error {
   }
 }
 
-export { InvalidXMLDocumentFormatError, OnlyAbsoluteCoordinatesError };
+class UnsupportedTagError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnsupportedTagError";
+  }
+}
+
+export {
+  InvalidXMLDocumentFormatError,
+  OnlyAbsoluteCoordinatesError,
+  UnsupportedTagError,
+};

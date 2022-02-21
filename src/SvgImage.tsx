@@ -1,58 +1,39 @@
+import { useEffect, useState } from "react";
 import { InvalidXMLDocumentFormatError } from "./errors";
-import { createXMLElement, generateDString, parseXML } from "./utils";
+import { createSvgElement, createXMLElement, parseXML } from "./utils";
 
 function SvgImage(props: { content: string }) {
-  let xmlElement;
-  let xmlElementDataObject;
+  const [svgElement, setSvgElement] = useState<null | JSX.Element>(null);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  try {
-    xmlElement = props.content && createXMLElement(props.content);
-    xmlElementDataObject = xmlElement && parseXML(xmlElement);
-  } catch (error) {
-    if (error instanceof InvalidXMLDocumentFormatError) {
-      console.error("Invalid XMLDocumentFormat");
-    } else {
-      console.error(error);
-    }
-  }
-
-  function createElement(elementData: ElementObjectBase) {
-    if (elementData.name === "svg") {
-      const childrenElements = elementData.children.map((child) =>
-        createElement(child)
+  useEffect(() => {
+    try {
+      const xmlElement = props.content && createXMLElement(props.content);
+      const xmlElementDataArray = xmlElement && parseXML(xmlElement);
+      setErrorMessage("");
+      setSvgElement(
+        xmlElementDataArray ? createSvgElement(xmlElementDataArray) : null
       );
-      return (
-        <svg
-          style={elementData.attributes.style}
-          viewBox={elementData.attributes.viewBox}
-          width={elementData.attributes.width}
-          height={elementData.attributes.height}
-          xmlns={elementData.attributes.xmlns}
-        >
-          {childrenElements}
-        </svg>
-      );
+    } catch (error) {
+      setErrorMessage(String(error));
+      setSvgElement(null);
+      if (error instanceof InvalidXMLDocumentFormatError) {
+        console.error("Invalid XMLDocumentFormat");
+      } else {
+        console.error(error);
+      }
     }
-    if (elementData.name === "g") {
-      const childrenElements = elementData.children.map((child) =>
-        createElement(child)
-      );
-      return <g>{childrenElements}</g>;
-    }
-    if (elementData.name === "path") {
-      return (
-        <path
-          d={generateDString(elementData.attributes.d)}
-          style={elementData.attributes.style}
-        />
-      );
-    }
-  }
+  }, [props.content]);
 
   return (
     <div>
-      <h2>You'll see the svg image below.</h2>
-      {xmlElementDataObject && createElement(xmlElementDataObject)}
+      {errorMessage ? (
+        <h2 style={{ color: "red" }}> {errorMessage} </h2>
+      ) : svgElement ? (
+        svgElement
+      ) : (
+        <h2 style={{ color: "blue" }}>Please upload a supported file!</h2>
+      )}
     </div>
   );
 }

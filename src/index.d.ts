@@ -2,6 +2,10 @@ interface ElementStyleProperties {
   [key: string]: string | number;
 }
 
+/* interface DAttribute {
+  d: Array<PathObjectC | PathObjectM | PathObjectL>;
+} */
+
 interface ElementAttributes {
   [key: string]:
     | string
@@ -11,9 +15,10 @@ interface ElementAttributes {
 }
 
 interface ElementObjectBase {
+  parentId: number;
   name: string;
   attributes: ElementAttributes;
-  children?: ElementObjectBase[];
+  children?: number[];
 }
 
 interface PathObjectBase {

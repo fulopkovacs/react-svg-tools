@@ -1,7 +1,11 @@
+import React from "react";
 import {
   InvalidXMLDocumentFormatError,
   OnlyAbsoluteCoordinatesError,
+  UnsupportedTagError,
 } from "./errors";
+
+const attributeBlackList = ["xmlns:serif"];
 
 // TODO:
 // This only works for the selected path types and absolute coordinates.
@@ -40,7 +44,7 @@ function parseDAttribute(d: string) {
       }
     } else if (e.match(/[a-z]/)) {
       throw new OnlyAbsoluteCoordinatesError(
-        e + "  Relative coordinates are not supported yet!"
+        "Relative coordinates are not supported yet!"
       );
     }
   }
@@ -64,13 +68,13 @@ function generateDString(
   return dString;
 }
 
-function convertToCamelCase(name: string) {
-  const hyphenName = name.split("-");
-  let camelCaseString = hyphenName.shift();
+function convertToCamelCase(name: string, separator: string) {
+  const originalName = name.split(separator);
+  let camelCaseString = originalName.shift();
   // TODO: avoid checking the value of `camelCaseString` for `undefined`
   // if it's not necessary
-  if (hyphenName.length > 0 && camelCaseString) {
-    for (let part of hyphenName) {
+  if (originalName.length > 0 && camelCaseString) {
+    for (let part of originalName) {
       camelCaseString += part.charAt(0).toUpperCase() + part.slice(1);
     }
     return camelCaseString;
@@ -84,47 +88,130 @@ function generateStyleObject(nodeValue: string) {
   for (let styleProp of nodeValue.split(";")) {
     const [key, value] = styleProp.split(":");
     if (key === "") continue;
-    const keyInCamelCase = convertToCamelCase(key);
+    const keyInCamelCase = convertToCamelCase(key, "-");
     styleObject[keyInCamelCase] = value;
   }
   return styleObject;
 }
 
-function parseNode(element: Element): ElementObjectBase {
-  /* TODO: Flatten this array to obtain ids that can be used to change the data object that defines  the state of the svg react component
-   */
-  const base = { name: element.nodeName };
-  const attributes: ElementAttributes = {};
-  Array.from(element.attributes).forEach(({ nodeName, nodeValue }) => {
-    if (!["style", "d"].includes(nodeName)) {
-      attributes[nodeName] = nodeValue;
-    } else if (nodeName === "style" && nodeValue) {
-      const styleObject = generateStyleObject(nodeValue);
-      attributes.style = styleObject;
-    } else if (nodeName === "d" && nodeValue) {
-      const d = parseDAttribute(nodeValue);
-      // const d = nodeValue; // TODO; Use the `parseDAttribute` function here later!!!
-      attributes.d = d;
+function getElementData(element: Element): ElementObjectBase[] {
+  // const svgDataObject: { [key: string]: ElementObjectBase } = {};
+  const svgDataArray: ElementObjectBase[] = [];
+  let id = -1;
+
+  function parseElement(element: Element, parentId = -1) {
+    /* TODO: Flatten this array to obtain ids that can be used to change the data object that defines  the state of the svg react component
+     */
+    const base = { name: element.nodeName };
+    const attributes: ElementAttributes = {};
+    const currentId = ++id;
+    Array.from(element.attributes).forEach(({ nodeName, nodeValue }) => {
+      if (!["style", "d", ...attributeBlackList].includes(nodeName)) {
+        attributes[convertToCamelCase(nodeName, ":")] = nodeValue;
+      } else if (nodeName === "style" && nodeValue) {
+        const styleObject = generateStyleObject(nodeValue);
+        attributes.style = styleObject;
+      } else if (nodeName === "d" && nodeValue) {
+        const d = parseDAttribute(nodeValue);
+        attributes.d = d;
+      }
+    });
+
+    if (element.hasChildNodes()) {
+      const children: number[] = [];
+      for (let child of element.children) {
+        parseElement(child, currentId);
+      }
+      svgDataArray[currentId] = {
+        ...base,
+        attributes,
+        children,
+        parentId,
+      };
+    } else {
+      svgDataArray[currentId] = { ...base, attributes, parentId };
+    }
+  }
+
+  parseElement(element);
+
+  svgDataArray.forEach((element, i) => {
+    if (
+      element.parentId >= 0 &&
+      element.parentId in svgDataArray &&
+      "children" in svgDataArray[element.parentId]
+    ) {
+      // INFO: The non-null assertion operator can be used here safely, since `children` will always be an empty array if it exists.
+      svgDataArray[element.parentId].children!.push(i);
     }
   });
 
-  if (element.hasChildNodes()) {
-    const children = [];
-    for (let child of element.children) {
-      children.push(parseNode(child));
+  return svgDataArray;
+}
+
+function createSvgElement(elements: ElementObjectBase[]) {
+  const ids = elements.map((_, i) => i);
+  const visited_ids: number[] = [];
+  // TODO: Do not sort the array in place, create a new `sortedElements` variable for it instead!
+  elements.sort((e1, e2) => (e1.parentId > e2.parentId ? 1 : -1));
+
+  function generateElement(id: number) {
+    // 1. generate Children
+    const element = elements[id];
+    visited_ids.push(id);
+    let children: JSX.Element[] | null = null;
+    if (element.children) {
+      children = element.children.map((childIndex) =>
+        generateElement(childIndex)
+      );
     }
-    return { ...base, attributes, children };
-  } else {
-    return { ...base, attributes };
+    if (element.name === "svg") {
+      // if (!children) return React.createElement("svg", element.attributes);
+
+      const svg: JSX.Element = React.createElement(
+        element.name,
+        element.attributes,
+        children
+      );
+      return svg;
+    } else if (element.name === "g") {
+      const g: JSX.Element = React.createElement(
+        element.name,
+        { key: id, ...element.attributes },
+        children
+      );
+      return g;
+    } else if (element.name === "path") {
+      const pathAttributes = element.attributes;
+      if (pathAttributes && "d" in pathAttributes) {
+        // TODO: Make sure that the pathAttributes.d is always an array of path element data objects
+        const dObj = pathAttributes.d as unknown as Array<
+          PathObjectC | PathObjectM
+        >;
+        pathAttributes.d = generateDString(dObj);
+      }
+      const path: JSX.Element = React.createElement(
+        element.name,
+        { key: id, ...pathAttributes },
+        children
+      );
+      return path;
+    } else {
+      throw new UnsupportedTagError(
+        `This tag is not supported yet: ${element.name}`
+      );
+    }
   }
+
+  // TODO: Make sure that every element is created!
+  return generateElement(ids[0]);
 }
 
 function parseXML(xmlElement: XMLDocument) {
   // INFO: At this point it can be safely assumed that the
   // first child element of the xml document is an svg element.
   const svgObject = xmlElement.children[0] as SVGSVGElement;
-  const svgDataObject = parseNode(svgObject);
-  return svgDataObject;
+  return getElementData(svgObject);
 }
 
 function createXMLElement(xmlElementString: string) {
@@ -151,8 +238,10 @@ function createXMLElement(xmlElementString: string) {
 export {
   parseXML,
   createXMLElement,
+  createSvgElement,
   convertToCamelCase,
   parseDAttribute,
   generateDString,
   generateStyleObject,
+  getElementData,
 };
